@@ -44,7 +44,7 @@ vector<pair<bool, int>> lazy;
 void init(int n) {
 	val.resize((n + 1) << 2, 0);
 	a.resize(n + 1, 0);
-	lazy.resize(n + 1, {0, 0});
+	lazy.resize((n + 1) << 2, {0, 0});
 }
 
 void build(int i, int tl, int tr) {
@@ -55,19 +55,61 @@ void build(int i, int tl, int tr) {
 	merge(i, x, y);
 }
 
-void update(int i, int tl, int tr, int k, int t) {
-	if (tl == tr) { val[i] = t; return; }
+void propagate(int i, int tl, int tr) {
+	if (!lazy[i].ff && lazy[i].ss == 0) return;
+	auto [x, y, tm] = meta(i, tl, tr);
+	if (lazy[i].ff) {
+		lazy[x].ff = 1;
+		lazy[x].ss = lazy[i].ss;
+		val[x] = (tm - tl + 1) * lazy[i].ss;
+		lazy[y].ff = 1;
+		lazy[y].ss = lazy[i].ss;
+		val[y] = (tr - tm) * lazy[i].ss;
+	} else {
+		lazy[x].ss += lazy[i].ss;
+		val[x] += (tm - tl + 1) * lazy[i].ss;
+		lazy[y].ss += lazy[i].ss;
+		val[y] += (tr - tm) * lazy[i].ss;
+	}
+	merge(i, x, y);
+	lazy[i] = {0, 0};
+}
+
+void update(int i, int tl, int tr, int l, int r, int v, bool type) {
+	if (tl == l && r == tr) {
+		if (l == r) {
+			lazy[i] = {0, 0};
+			if (type) val[i] = v;
+			else val[i] += v;
+			return;
+		}
+		int temp = val[i];
+		propagate(i, tl, tr);
+		int temp1 = val[i];
+		if (temp != temp1) {
+			exit(0);
+		}
+		lazy[i] = {type, v};
+		if (type) val[i] = (tr - tl + 1) * v;
+		else val[i] += (tr - tl + 1) * v;
+		return;
+	}
 	auto [x, y, tm] = meta(i, tl,  tr);
-	if (k <= tm) update(x, tl, tm, k, t);
-	else update(y, tm + 1, tr, k, t);
+	if (r <= tm) update(x, tl, tm, l, r, v, type);
+	else if (tm < l) update(y, tm + 1, tr, l, r, v, type);
+	else {
+		update(x, tl, tm, l, tm, v, type);
+		update(y, tm + 1, tr, tm + 1, r, v, type);
+	}
 	merge(i, x, y);
 }
 
 int query(int i, int tl, int tr, int l, int r) {
 	if (tl == l && r == tr) return val[i];
+	propagate(i, tl, tr);
 	auto [x, y, tm] = meta(i, tl, tr);
 	if (r <= tm) return query(x, tl, tm, l, r);
-	else if (tm + 1 <= l) return query(y, tm + 1, tr, l, r);
+	else if (tm < l) return query(y, tm + 1, tr, l, r);
 	return merge(query(x, tl, tm, l, tm), query(y, tm + 1, tr, tm + 1, r));
 }
 
@@ -84,9 +126,16 @@ int32_t main() {
 	int n, q; cin >> n >> q;
 	init(n);
 	rep(i, n) cin >> a[i];
-	build(n);
+	build(0, 0, n - 1);
 	rep(i, q) {
-
+		int c, l, r;
+		cin >> c >> l >> r;
+		if (c == 3) {
+			cout << query(0, 0, n - 1, l - 1, r - 1) << endl; 
+		} else {
+			int x; cin >> x;
+			update(0, 0, n - 1, l - 1, r - 1, x, c == 2);
+		}
 	}
 	return 0;
 }
