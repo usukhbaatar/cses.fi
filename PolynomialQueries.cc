@@ -40,10 +40,10 @@ void merge(int, int, int);
 int merge(int, int);
 
 vi a, val;
-vector<pair<bool, int>> lazy;
+vii lazy;
 void init(int n) {
-	val.resize((n + 1) << 2, 0);
 	a.resize(n + 1, 0);
+	val.resize((n + 1) << 2, 0);
 	lazy.resize((n + 1) << 2, {0, 0});
 }
 
@@ -55,58 +55,34 @@ void build(int i, int tl, int tr) {
 	merge(i, x, y);
 }
 
-void propagate(int i, int tl, int tr) {
-	if (!lazy[i].ff && lazy[i].ss == 0) return;
-	if (tl == tr) return;
-	auto [x, y, tm] = meta(i, tl, tr);
-	if (lazy[i].ff) {
-		lazy[x].ff = 1;
-		lazy[x].ss = lazy[i].ss;
-		val[x] = (tm - tl + 1) * lazy[i].ss;
-		lazy[y].ff = 1;
-		lazy[y].ss = lazy[i].ss;
-		val[y] = (tr - tm) * lazy[i].ss;
-	} else {
-		lazy[x].ss += lazy[i].ss;
-		val[x] += (tm - tl + 1) * lazy[i].ss;
-		lazy[y].ss += lazy[i].ss;
-		val[y] += (tr - tm) * lazy[i].ss;
-	}
-	lazy[i] = {0, 0};
+int calc(int a, int n) {
+	int b = a + n - 1;
+	return (a + b) * n / 2;
 }
 
-void update(int i, int tl, int tr, int l, int r, int v, bool type) {
-	propagate(i, tl, tr);
+void update(int i, int tl, int tr, int l, int r, int k) {
 	if (tl == l && r == tr) {
-		if (l == r) {
-			lazy[i] = {0, 0};
-			if (type) val[i] = v;
-			else val[i] += v;
-			return;
-		}
-		lazy[i] = {type, v};
-		if (type) val[i] = (tr - tl + 1) * v;
-		else val[i] += (tr - tl + 1) * v;
+		lazy[i].ff += 1;
+		lazy[i].ss += k - 1;
 		return;
 	}
 	auto [x, y, tm] = meta(i, tl,  tr);
-	if (r <= tm) update(x, tl, tm, l, r, v, type);
-	else if (tm < l) update(y, tm + 1, tr, l, r, v, type);
+	if (r <= tm) update(x, tl, tm, l, r, k);
+	else if (tm < l) update(y, tm + 1, tr, l, r, k);
 	else {
-		update(x, tl, tm, l, tm, v, type);
-		update(y, tm + 1, tr, tm + 1, r, v, type);
+		update(x, tl, tm, l, tm, k);
+		update(y, tm + 1, tr, tm + 1, r, k + (tm + 1 - l));
 	}
-	merge(i, x, y);
+	val[i] += calc(k, r - l + 1);
 }
 
 int query(int i, int tl, int tr, int l, int r) {
-	if (lazy[i].ff) return lazy[i].ss * (r - l + 1);
-	if (tl == l && r == tr) return val[i];
-	propagate(i, tl, tr);
+	int sum = lazy[i].ff * calc(l - tl + 1, r - l + 1) + lazy[i].ss * (r - l + 1);
+	if (tl == l && r == tr) return val[i] + sum;
 	auto [x, y, tm] = meta(i, tl, tr);
-	if (r <= tm) return query(x, tl, tm, l, r);
-	else if (tm < l) return query(y, tm + 1, tr, l, r);
-	return merge(query(x, tl, tm, l, tm), query(y, tm + 1, tr, tm + 1, r));
+	if (r <= tm) return query(x, tl, tm, l, r) + sum;
+	else if (tm + 1 <= l) return query(y, tm + 1, tr, l, r) + sum;
+	return merge(query(x, tl, tm, l, tm), query(y, tm + 1, tr, tm + 1, r)) + sum;
 }
 
 void merge(int i, int x, int y) {
@@ -123,14 +99,13 @@ int32_t main() {
 	init(n);
 	rep(i, n) cin >> a[i];
 	build(0, 0, n - 1);
-	rep(i, q) {
+	while (q--) {
 		int c, l, r;
 		cin >> c >> l >> r;
-		if (c == 3) {
-			cout << query(0, 0, n - 1, l - 1, r - 1) << endl; 
+		if (c == 1) {
+			update(0, 0, n - 1, l - 1, r - 1, 1);
 		} else {
-			int x; cin >> x;
-			update(0, 0, n - 1, l - 1, r - 1, x, c == 2);
+			cout << query(0, 0, n - 1, l - 1, r - 1) << endl;
 		}
 	}
 	return 0;
